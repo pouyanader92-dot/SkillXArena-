@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SkillArena - آرنا مهارت‌ها</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = { theme: { extend: { fontFamily: { sans: ['Vazirmatn', 'sans-serif'] } } } }
+    </script>
+    <style>
+        body { background: #0f0f0f; color: #f1f1f1; font-family: 'Vazirmatn', sans-serif; margin: 0; min-height: 100vh; }
+        .glass { background: #1f1f1f; border: 1px solid #303030; }
+        .btn-brand { background: #ff0000; transition: 0.2s; color: #fff; border: none; cursor: pointer; }
+        .btn-brand:hover { background: #cc0000; }
+        .btn-outline { background: #303030; transition: 0.2s; color: #fff; border: none; cursor: pointer; }
+        .btn-outline:hover { background: #404040; }
+        input, select, textarea { background: #121212; border: 1px solid #303030; color: #fff; padding: 0.75rem; border-radius: 0.5rem; width: 100%; transition: 0.2s; font-size: 1rem; min-height: 48px; }
+        input:focus { outline: none; border-color: #ff0000; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-thumb { background: #303030; border-radius: 4px; }
+        ::-webkit-scrollbar-track { background: #0f0f0f; }
+        .video-card { transition: 0.2s; cursor: pointer; }
+        .video-card:hover { background: #1a1a1a; }
+        #app, #auth-modal, #upload-modal, #player-modal { display: none; }
+        #auth-modal { display: flex; }
+    </style>
+</head>
+<body>
+
+<!-- Toast -->
+<div id="toast" class="fixed top-5 left-1/2 -translate-x-1/2 z-[100] hidden glass px-6 py-3 rounded-lg text-sm font-medium border-red-500"></div>
+
+<!-- Auth Modal -->
+<div id="auth-modal" class="fixed inset-0 z-50 items-center justify-center p-4 bg-black/80">
+    <div class="glass p-8 w-full max-w-md rounded-2xl text-center">
+        <h2 class="text-2xl font-bold mb-2 flex items-center justify-center gap-2"><i data-lucide="clapperboard" class="w-7 h-7 text-red-600"></i> ورود به اسکیل آرنا</h2>
+        <p class="text-slate-400 text-sm mb-6">سکو مهارت توست! ثبت‌نام کن یا وارد شو.</p>
+        <div class="space-y-4 text-right">
+            <div class="flex gap-2">
+                <input id="auth-username" type="text" placeholder="نام کاربری (انگلیسی)" class="flex-1">
+                <select id="auth-mode" class="w-32">
+                    <option value="login">ورود</option>
+                    <option value="register">ثبت‌نام</option>
+                </select>
+            </div>
+            <div id="reg-fields" class="hidden space-y-4">
+                <input id="auth-name" type="text" placeholder="نام نمایشی (مثلا: رادین نبی پور)">
+                <select id="auth-skill"><option value="فوتبال">فوتبال</option><option value="یو سی مس">یو سی مس</option><option value="موسیقی">موسیقی</option><option value="برنامه‌نویسی">برنامه‌نویسی</option><option value="عمومی">عمومی</option></select>
+            </div>
+            <input id="auth-password" type="password" placeholder="رمز عبور" onkeydown="if(event.key==='Enter')doAuth()">
+            <button onclick="doAuth()" class="w-full btn-brand py-3 rounded-lg font-bold">تایید</button>
+            <p class="text-xs text-slate-500 text-center">کاربر نمونه: radin / 123</p>
+        </div>
+    </div>
+</div>
+
+<!-- Upload Modal -->
+<div id="upload-modal" class="fixed inset-0 z-40 hidden items-center justify-center p-4 bg-black/90">
+    <div class="glass p-6 w-full max-w-lg rounded-2xl">
+        <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-3">
+            <h3 class="text-lg font-bold">آپلود ویدیوی مهارت</h3>
+            <button onclick="closeModal('upload-modal')" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-6 h-6"></i></button>
+        </div>
+        <div class="space-y-4">
+            <div><label class="text-xs text-slate-400 block mb-1">عنوان ویدیو</label><input id="upload-title" type="text" placeholder="مثلا: مهارت دریبل با توپ"></div>
+            <div><label class="text-xs text-slate-400 block mb-1">لینک ویدیو (mp4 یا یوتوب)</label><input id="upload-url" type="text" placeholder="https://..."></div>
+            <button onclick="uploadVideo()" class="w-full btn-brand py-3 rounded-lg font-bold">انتشار ویدیو</button>
+            <p class="text-xs text-slate-500">* برای یوتوب، لینک را به صورت embed وارد کنید (مثال: https://www.youtube.com/embed/VIDEO_ID)</p>
+        </div>
+    </div>
+</div>
+
+<!-- Video Player Modal -->
+<div id="player-modal" class="fixed inset-0 z-40 hidden items-center justify-center p-4 bg-black/95">
+    <div class="glass p-4 w-full max-w-4xl rounded-2xl flex flex-col max-h-[90vh]">
+        <div class="flex justify-between items-center mb-4">
+            <h3 id="p-title" class="text-lg font-bold truncate"></h3>
+            <button onclick="closeModal('player-modal')" class="text-slate-400 hover:text-white p-2"><i data-lucide="x" class="w-6 h-6"></i></button>
+        </div>
+        <div class="bg-black rounded-xl overflow-hidden mb-4 aspect-video">
+            <div id="p-video-container" class="w-full h-full"></div>
+        </div>
+        <div class="flex justify-between items-center mb-4 pb-4 border-b border-slate-700">
+            <div class="flex items-center gap-3">
+                <div id="p-avatar" class="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center text-xl"></div>
+                <div>
+                    <div id="p-uploader" class="font-bold text-sm"></div>
+                    <div id="p-skill" class="text-xs text-slate-400"></div>
+                </div>
+            </div>
+            <button id="p-like-btn" onclick="likeVideo()" class="btn-outline px-4 py-2 rounded-full font-bold flex items-center gap-2 text-sm">
+                <i data-lucide="thumbs-up" class="w-5 h-5"></i> <span id="p-likes">0</span>
+            </button>
+        </div>
+        <div class="flex-1 overflow-y-auto pr-2">
+            <h4 class="font-bold mb-2">نظرات</h4>
+            <div class="flex gap-2 mb-4">
+                <input id="p-comment-input" type="text" placeholder="نظر خود را بنویس..." onkeydown="if(event.key==='Enter')commentVideo()">
+                <button onclick="commentVideo()" class="btn-brand px-4 rounded-lg">ارسال</button>
+            </div>
+            <div id="p-comments" class="space-y-2"></div>
+        </div>
+    </div>
+</div>
+
+<!-- App Layout -->
+<div id="app" class="max-w-7xl mx-auto p-4 pb-20">
+    <nav class="flex justify-between items-center mb-8 sticky top-0 z-30 bg-[#0f0f0f] py-4 border-b border-slate-800">
+        <div class="flex items-center gap-3 cursor-pointer" onclick="navigate('home')">
+            <i data-lucide="clapperboard" class="w-8 h-8 text-red-600"></i>
+            <span class="font-bold text-xl">SkillArena</span>
+        </div>
+        <div class="flex items-center gap-3">
+            <button onclick="openModal('upload-modal')" class="btn-outline px-4 py-2 rounded-lg font-bold flex items-center gap-2 text-sm"><i data-lucide="upload" class="w-4 h-4"></i> آپلود</button>
+            <button onclick="navigate('profile')" class="btn-outline p-2 rounded-full"><i data-lucide="user" class="w-5 h-5"></i></button>
+        </div>
+    </nav>
+
+    <!-- Home / Feed -->
+    <div id="section-home">
+        <div class="flex gap-2 mb-6 overflow-x-auto pb-2">
+            <button onclick="filterVideos('all')" class="bg-slate-700 text-white px-4 py-2 rounded-lg text-sm whitespace-nowrap">همه</button>
+            <button onclick="filterVideos('فوتبال')" class="bg-slate-800 text-slate-300 px-4 py-2 rounded-lg text-sm whitespace-nowrap">فوتبال</button>
+            <button onclick="filterVideos('یو سی مس')" class="bg-slate-800 text-slate-300 px-4 py-2 rounded-lg text-sm whitespace-nowrap">یو سی مس</button>
+            <button onclick="filterVideos('موسیقی')" class="bg-slate-800 text-slate-300 px-4 py-2 rounded-lg text-sm whitespace-nowrap">موسیقی</button>
+        </div>
+        <div id="feed-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    </div>
+
+    <!-- Profile -->
+    <div id="section-profile" class="hidden">
+        <div class="glass p-6 rounded-2xl mb-6 flex flex-col sm:flex-row gap-6 items-center">
+            <div id="prof-avatar" class="w-24 h-24 rounded-full bg-red-600 flex items-center justify-center text-5xl">👤</div>
+            <div class="flex-1 text-center sm:text-right">
+                <h2 id="prof-name" class="text-2xl font-bold">کاربر</h2>
+                <p id="prof-skill" class="text-red-400 font-bold mt-1">مهارت</p>
+                <p id="prof-bio" class="text-slate-400 text-sm mt-2"></p>
+            </div>
+            <button onclick="openEditProfile()" class="btn-outline px-4 py-2 rounded-lg text-sm">ویرایش پروفایل</button>
+        </div>
+        <h3 class="font-bold mb-4">ویدیوهای من</h3>
+        <div id="prof-videos" class="grid grid-cols-1 sm:grid-cols-3 gap-4"></div>
+    </div>
+</div>
+
+<script>
+let currentUser = null;
+let dbData = { users: [], videos: [] };
+let currentVideoId = null;
+let currentFilter = 'all';
+
+function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.remove('hidden'); setTimeout(() => t.classList.add('hidden'), 3000); }
+function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+async function fetchDb() {
+    const res = await fetch('/api/db');
+    dbData = await res.json();
+    if(!dbData.users) dbData.users = [];
+    if(!dbData.videos) dbData.videos = [];
+}
+
+async function saveDb() {
+    await fetch('/api/db', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(dbData) });
+}
+
+document.getElementById('auth-mode').addEventListener('change', (e) => {
+    document.getElementById('reg-fields').classList.toggle('hidden', e.target.value === 'login');
+});
+
+async function doAuth() {
+    const u = document.getElementById('auth-username').value.trim();
+    const p = document.getElementById('auth-password').value;
+    const mode = document.getElementById('auth-mode').value;
+    if(!u || !p) return showToast('نام کاربری و رمز را وارد کنید');
+
+    if(mode === 'register') {
+        const name = document.getElementById('auth-name').value.trim();
+        const skill = document.getElementById('auth-skill').value;
+        if(!name) return showToast('نام نمایشی را وارد کنید');
+        const res = await fetch('/api/auth', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ username: u, password: p, displayName: name, skill }) });
+        const data = await res.json();
+        if(data.error) return showToast(data.error);
+        currentUser = data.user.username;
+    } else {
+        const res = await fetch('/api/auth', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ username: u, password: p }) });
+        const data = await res.json();
+        if(data.error) return showToast(data.error);
+        currentUser = data.user.username;
+    }
+    
+    closeModal('auth-modal');
+    document.getElementById('app').style.display = 'block';
+    initApp();
+}
+
+function initApp() {
+    navigate('home');
+    lucide.createIcons();
+}
+
+function navigate(section) {
+    document.getElementById('section-home').classList.toggle('hidden', section !== 'home');
+    document.getElementById('section-profile').classList.toggle('hidden', section !== 'profile');
+    if(section === 'home') renderFeed();
+    if(section === 'profile') renderProfile();
+    lucide.createIcons();
+}
+
+function filterVideos(skill) {
+    currentFilter = skill;
+    renderFeed();
+}
+
+function renderFeed() {
+    const videos = dbData.videos.filter(v => currentFilter === 'all' || dbData.users.find(u => u.username === v.uploader)?.skill === currentFilter);
+    const html = videos.map(v => {
+        let user = dbData.users.find(u => u.username === v.uploader);
+        return `
+        <div class="video-card glass rounded-xl overflow-hidden" onclick="playVideo('${v.id}')">
+            <div class="aspect-video bg-black flex items-center justify-center">
+                <i data-lucide="play-circle" class="w-16 h-16 text-white/80"></i>
+            </div>
+            <div class="p-3 flex gap-3">
+                <div class="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center text-sm">${user?.avatar || '👤'}</div>
+                <div>
+                    <h3 class="font-bold text-sm line-clamp-2">${v.title}</h3>
+                    <p class="text-xs text-slate-400 mt-1">${user?.displayName || v.uploader}</p>
+                    <p class="text-xs text-slate-500">${v.likes.length} لایک</p>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+    document.getElementById('feed-grid').innerHTML = html || '<p class="text-slate-500 col-span-full text-center py-10">ویدیویی یافت نشد</p>';
+    lucide.createIcons();
+}
+
+function playVideo(id) {
+    currentVideoId = id;
+    let v = dbData.videos.find(x => x.id === id);
+    let user = dbData.users.find(u => u.username === v.uploader);
+    
+    document.getElementById('p-title').textContent = v.title;
+    document.getElementById('p-uploader').textContent = user?.displayName || v.uploader;
+    document.getElementById('p-skill').textContent = user?.skill || '';
+    document.getElementById('p-avatar').textContent = user?.avatar || '👤';
+    document.getElementById('p-likes').textContent = v.likes.length;
+    
+    let container = document.getElementById('p-video-container');
+    if(v.url.includes('youtube.com/embed')) {
+        container.innerHTML = `<iframe src="${v.url}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen class="w-full h-full"></iframe>`;
+    } else {
+        container.innerHTML = `<video src="${v.url}" controls autoplay class="w-full h-full"></video>`;
+    }
+
+    renderComments(v.comments);
+    openModal('player-modal');
+    lucide.createIcons();
+}
+
+function renderComments(comments) {
+    const html = comments.map(c => {
+        let user = dbData.users.find(u => u.username === c.from);
+        return `
+        <div class="flex gap-2 mb-3">
+            <div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-sm shrink-0">${user?.avatar || '👤'}</div>
+            <div class="bg-slate-800 p-2 rounded-lg">
+                <div class="text-xs font-bold">${user?.displayName || c.from}</div>
+                <div class="text-sm">${c.text}</div>
+            </div>
+        </div>`;
+    }).join('');
+    document.getElementById('p-comments').innerHTML = html || '<p class="text-slate-500 text-sm">اولین نفر باشید!</p>';
+}
+
+async function likeVideo() {
+    const res = await fetch('/api/video/like', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ username: currentUser, videoId: currentVideoId }) });
+    const data = await res.json();
+    if(data.success) {
+        let v = dbData.videos.find(x => x.id === currentVideoId);
+        v.likes = Array(data.likes).fill(0); // dummy update local
+        document.getElementById('p-likes').textContent = data.likes;
+    }
+}
+
+async function commentVideo() {
+    const text = document.getElementById('p-comment-input').value.trim();
+    if(!text) return;
+    document.getElementById('p-comment-input').value = '';
+    const res = await fetch('/api/video/comment', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ username: currentUser, videoId: currentVideoId, text }) });
+    const data = await res.json();
+    if(data.success) {
+        let v = dbData.videos.find(x => x.id === currentVideoId);
+        v.comments = data.comments;
+        renderComments(v.comments);
+    }
+}
+
+async function uploadVideo() {
+    const title = document.getElementById('upload-title').value.trim();
+    const url = document.getElementById('upload-url').value.trim();
+    if(!title || !url) return showToast('عنوان و لینک را وارد کنید');
+    
+    const res = await fetch('/api/video/upload', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ username: currentUser, title, url }) });
+    const data = await res.json();
+    if(data.success) {
+        showToast('ویدیو با موفقیت منتشر شد!');
+        document.getElementById('upload-title').value = '';
+        document.getElementById('upload-url').value = '';
+        closeModal('upload-modal');
+        await fetchDb();
+        renderFeed();
+    }
+}
+
+function renderProfile() {
+    let user = dbData.users.find(u => u.username === currentUser);
+    if(!user) return;
+    document.getElementById('prof-avatar').textContent = user.avatar || '👤';
+    document.getElementById('prof-name').textContent = user.displayName;
+    document.getElementById('prof-skill').textContent = user.skill;
+    document.getElementById('prof-bio').textContent = user.bio || 'بیوگرافی ثبت نشده است.';
+    
+    const myVids = dbData.videos.filter(v => v.uploader === currentUser);
+    const html = myVids.map(v => `
+        <div class="video-card glass rounded-xl overflow-hidden" onclick="playVideo('${v.id}')">
+            <div class="aspect-video bg-black flex items-center justify-center"><i data-lucide="play-circle" class="w-12 h-12 text-white/80"></i></div>
+            <div class="p-2"><h3 class="font-bold text-sm line-clamp-1">${v.title}</h3><p class="text-xs text-slate-500 mt-1">${v.likes.length} لایک</p></div>
+        </div>
+    `).join('');
+    document.getElementById('prof-videos').innerHTML = html || '<p class="text-slate-500 col-span-full text-center py-4">شما هنوز ویدیویی آپلود نکرده‌اید</p>';
+    lucide.createIcons();
+}
+
+async function openEditProfile() {
+    let user = dbData.users.find(u => u.username === currentUser);
+    const bio = prompt('بیوگرافی خود را وارد کنید:', user.bio || '');
+    const avatar = prompt('یک ایموجی برای آواتار وارد کنید (مثلا: ⚽):', user.avatar || '👤');
+    if(bio !== null && avatar !== null) {
+        await fetch('/api/user/update', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ username: currentUser, data: { bio, avatar } }) });
+        await fetchDb();
+        renderProfile();
+        showToast('پروفایل آپدیت شد');
+    }
+}
+
+window.onload = async function() { 
+    lucide.createIcons(); 
+    await fetchDb(); 
+};
+</script>
+</body>
+</html>
