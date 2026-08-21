@@ -22,20 +22,7 @@ async function loadDb() {
             const db = data.record || {};
             memoryDb.users = db.users || [];
             memoryDb.videos = db.videos || [];
-            
-            //_seed initial data if empty
-            if (memoryDb.users.length === 0) {
-                memoryDb.users.push(
-                    { username: "radin", password: "123", displayName: "رادین نبی پور", skill: "فوتبال", bio: "بازیکن و نمایشگر مهارت‌های فوتبال", avatar: "⚽" },
-                    { username: "reza", password: "123", displayName: "رضا کریم پور", skill: "یو سی مس (UCMAS)", bio: "قهرمان ریاضیات ذهنی", avatar: "🧮" }
-                );
-                memoryDb.videos.push(
-                    { id: "v1", uploader: "radin", title: "بهترین مهارت‌های فوتبال رادین", url: "https://www.w3schools.com/html/mov_bbb.mp4", likes: [], comments: [] },
-                    { id: "v2", uploader: "reza", title: "نمایش قدرت ذهن در یو-سی-مس", url: "https://www.w3schools.com/html/movie.mp4", likes: [], comments: [] }
-                );
-                saveDb();
-            }
-            console.log("DB Loaded & Seeded!");
+            console.log("DB Loaded!");
         }
     } catch (e) { console.error("Load DB Error:", e.message); }
 }
@@ -56,7 +43,6 @@ async function saveDb() {
 app.get('/api/db', async (req, res) => res.json(memoryDb));
 app.post('/api/db', async (req, res) => { memoryDb = req.body; saveDb(); res.json({ success: true }); });
 
-// Auth & User Update
 app.post('/api/auth', async (req, res) => {
     const { username, password, displayName, skill } = req.body;
     let user = memoryDb.users.find(u => u.username === username);
@@ -82,18 +68,6 @@ app.post('/api/user/update', async (req, res) => {
     } else res.status(404).json({ error: 'User not found' });
 });
 
-// Video Actions
-app.post('/api/video/upload', async (req, res) => {
-    const { username, title, url } = req.body;
-    let user = memoryDb.users.find(u => u.username === username);
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    
-    let videoId = 'v_' + Date.now();
-    memoryDb.videos.push({ id: videoId, uploader: username, title, url, likes: [], comments: [] });
-    saveDb();
-    res.json({ success: true, videoId });
-});
-
 app.post('/api/video/like', async (req, res) => {
     const { username, videoId } = req.body;
     let video = memoryDb.videos.find(v => v.id === videoId);
@@ -113,7 +87,7 @@ app.post('/api/video/comment', async (req, res) => {
     if (!video) return res.status(404).json({ error: 'Video not found' });
     
     video.comments.push({ id: Date.now(), from: username, text, date: new Date().toLocaleTimeString('fa-IR') });
-    if (video.comments.length > 50) video.comments.shift(); // max 50 comments
+    if (video.comments.length > 50) video.comments.shift();
     saveDb();
     res.json({ success: true, comments: video.comments });
 });
