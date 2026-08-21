@@ -11,7 +11,7 @@ const BIN_ID = process.env.JSONBIN_BIN_ID;
 const API_KEY = process.env.JSONBIN_API_KEY;
 const DB_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
 
-let memoryDb = { users: [], videos: [] };
+let memoryDb = { users: [] };
 let isSaving = false;
 
 async function loadDb() {
@@ -19,10 +19,7 @@ async function loadDb() {
         const response = await fetch(DB_URL + '/latest', { headers: { 'X-Master-Key': API_KEY } });
         if (response.ok) {
             const data = await response.json();
-            const db = data.record || {};
-            memoryDb.users = db.users || [];
-            memoryDb.videos = db.videos || [];
-            console.log("DB Loaded!");
+            memoryDb.users = data.record?.users || [];
         }
     } catch (e) { console.error("Load DB Error:", e.message); }
 }
@@ -66,30 +63,6 @@ app.post('/api/user/update', async (req, res) => {
         saveDb();
         res.json({ success: true, user });
     } else res.status(404).json({ error: 'User not found' });
-});
-
-app.post('/api/video/like', async (req, res) => {
-    const { username, videoId } = req.body;
-    let video = memoryDb.videos.find(v => v.id === videoId);
-    if (!video) return res.status(404).json({ error: 'Video not found' });
-    
-    const index = video.likes.indexOf(username);
-    if (index > -1) video.likes.splice(index, 1);
-    else video.likes.push(username);
-    
-    saveDb();
-    res.json({ success: true, likes: video.likes.length });
-});
-
-app.post('/api/video/comment', async (req, res) => {
-    const { username, videoId, text } = req.body;
-    let video = memoryDb.videos.find(v => v.id === videoId);
-    if (!video) return res.status(404).json({ error: 'Video not found' });
-    
-    video.comments.push({ id: Date.now(), from: username, text, date: new Date().toLocaleTimeString('fa-IR') });
-    if (video.comments.length > 50) video.comments.shift();
-    saveDb();
-    res.json({ success: true, comments: video.comments });
 });
 
 loadDb().then(() => {
